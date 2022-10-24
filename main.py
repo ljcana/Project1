@@ -52,3 +52,25 @@ class Dynamics(nn.Module):
 
         return state
 
+# Create controller
+
+class Controller(nn.Module):
+
+    def __init__(self, dim_input, dim_hidden, dim_output):
+        """
+        dim_input: # of system states
+        dim_hidden: (tbd)
+        dim_output: # of actions
+        """
+        super(Controller, self).__init__()
+        self.network = nn.Sequential(
+            nn.Linear(dim_input, dim_hidden),
+            nn.Tanh(),
+            nn.Linear(dim_hidden, dim_output),
+            # You can add more layers here
+            nn.Sigmoid()
+        )
+
+    def forward(self, state):
+        action = self.network(state)
+        return action

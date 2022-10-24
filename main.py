@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 FRAME_TIME = 0.1    # time interval
 GRAVITY_ACCEL = 0.12    # gravity constant
 BOOST_ACCEL = 0.18  # thrust constant
+PLATFORM_WIDTH = 0.25    # landing platform width
+PLATFORM_HEIGHT = 0.06  # landing platform height
+ROTATION_ACCEL = 20     # rotation constant
 
 
 # Define System Dynamics
@@ -31,24 +34,37 @@ class Dynamics(nn.Module):
     def forward(state, action):
 
         """
-        action: thrust or no thrust
-        state[0] = y
-        state[1] = y_dot
+        action[0]: thrust controller
+        action[1]: omega controller
+        state[0] = x
+        state[1] = x_dot
+        state[2] = y
+        state[3] = y_dot
+        state[4] = theta
         """
 
         # Apply gravity
-        delta_state_gravity = t.tensor([0., GRAVITY_ACCEL * FRAME_TIME])
+        delta_state_gravity = t.tensor([0., 0., 0., GRAVITY_ACCEL * FRAME_TIME, 0.])
 
-        # Apply Thrust
-        delta_state = BOOST_ACCEL * FRAME_TIME * t.tensor([0., -1.]) * action
+        # Thrust
+        N = len(state)
+        state_tensor = t.zeros((N, 5))
+        state_tensor[:, 1] = -t.sin(state[:, 4])
+        state_tensor[:, 3] = t.cos(state[:, 4])
+        delta_state = BOOST_ACCEL * FRAME_TIME * t.mul(state_tensor, action[:, 0].reshape(-1, 1))
 
-        # Update velocity
-        state = state + delta_state + delta_state_gravity
+        # Theta
+        delta_state_theta = FRAME_TIME * t.mul(t.tensor([0., 0., 0., 0., -1.]), action[:, 1].reshape(-1, 1))
+
+        state = state + delta_state + delta_state_gravity + delta_state_theta
 
         # Update state
-        step_mat = t.tensor([[1., FRAME_TIME],
-                             [0., 1.]])
-        state = t.matmul(step_mat, state)
+        step_mat = t.tensor([[1., FRAME_TIME, 0., 0., 0.],
+                             [0., 1., 0., 0., 0.],
+                             [0., 0., 1., FRAME_TIME, 0.],
+                             [0., 0., 0., 1., 0.],
+                             [0., 0., 0., 0., 1.]])
+        state = t.matmul(step_mat, state.T)
 
         return state
 
@@ -59,7 +75,7 @@ class Controller(nn.Module):
     def __init__(self, dim_input, dim_hidden, dim_output):
         """
         dim_input: # of system states
-        dim_hidden: (tbd)
+        dim_hidden: up to you
         dim_output: # of actions
         """
         super(Controller, self).__init__()
@@ -138,6 +154,7 @@ class Optimize:
 
  # Run the code
 
+"""
 T = 100    # number of time steps
 dim_input = 2    # state space dimensions
 dim_hidden = 6  # latent dimensions
@@ -147,3 +164,4 @@ c = Controller(dim_input, dim_hidden, dim_output)   # define controller
 s = Simulation(c, d, T)     # define simulation
 o = Optimize(s)     # define optimizer
 o.train(40)     # solve the optimization problem
+"""

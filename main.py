@@ -74,3 +74,34 @@ class Controller(nn.Module):
     def forward(self, state):
         action = self.network(state)
         return action
+
+# Execute Simulation
+
+class Simulation(nn.Module):
+
+    def __init__(self, controller, dynamics, T):
+        super(Simulation, self).__init__
+        self.state = self.initialize_state()
+        self.controller = controller
+        self.dynamics = dynamics
+        self.T = T
+        self.action_trajectory = []
+        self.state_trajectory = []
+
+    def forward(self, state):
+        self.action_trajectory = []
+        self.state_trajectory = []
+        for _ in range(T):
+            action = self.controller.forward(state)
+            state = self.dynamics.forward(state, action)
+            self.action_trajectory.append(action)
+            self.state_trajectory.append(state)
+        return self.error(state)
+
+    @staticmethod
+    def initialize_state():
+        state = [1., 0.]    # TODO: need batch of inital states
+        return t.tensor(state, requires_grad=False).float()
+
+    def error(self, state):
+        return state[0]**2 + state[1]**2

@@ -80,7 +80,7 @@ class Controller(nn.Module):
 class Simulation(nn.Module):
 
     def __init__(self, controller, dynamics, T):
-        super(Simulation, self).__init__
+        super(Simulation, self).__init__()
         self.state = self.initialize_state()
         self.controller = controller
         self.dynamics = dynamics
@@ -100,7 +100,7 @@ class Simulation(nn.Module):
 
     @staticmethod
     def initialize_state():
-        state = [1., 0.]    # TODO: need batch of inital states
+        state = [1., 0.]    # TODO: need batch of initial states
         return t.tensor(state, requires_grad=False).float()
 
     def error(self, state):
@@ -135,3 +135,15 @@ class Optimize:
         y = data[:, 1]
         plt.plot(x, y)
         plt.show()
+
+ # Run the code
+
+T = 100    # number of time steps
+dim_input = 2    # state space dimensions
+dim_hidden = 6  # latent dimensions
+dim_output = 1  # action space dimensions
+d = Dynamics()  # define dynamics
+c = Controller(dim_input, dim_hidden, dim_output)   # define controller
+s = Simulation(c, d, T)     # define simulation
+o = Optimize(s)     # define optimizer
+o.train(40)     # solve the optimization problem

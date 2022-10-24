@@ -105,3 +105,33 @@ class Simulation(nn.Module):
 
     def error(self, state):
         return state[0]**2 + state[1]**2
+
+# Set up optimizer
+
+class Optimize:
+    def __init__(self, simulation):
+        self.simulation = simulation
+        self.parameters = simulation.controller.parameters()
+        self.optimizer = optim.LBFGS(self.parameters, lr=0.01)
+
+    def step(self):
+        def closure():
+            loss = self.simulation(self.simulation.state)
+            self.optimizer.zero_grad()
+            loss.backward()
+            return loss
+        self.optimizer.step(closure)
+        return closure()
+
+    def train(self, epochs):
+        for epoch in range(epochs):
+            loss = self.step()
+            print('[%d] loss: %.3f' % (epoch + 1, loss))
+            self.visualize()
+
+    def visualize(self):
+        data = np.array([self.simulation.state_trajectory[i].detach().numpy() for i in range(self.simulation.T)])
+        x = data[:, 0]
+        y = data[:, 1]
+        plt.plot(x, y)
+        plt.show()

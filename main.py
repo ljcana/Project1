@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 # setting up environment parameters
 
 FRAME_TIME = 0.1    # time interval
-GRAVITY_ACCEL = 0.12    # gravity constant
-BOOST_ACCEL = 0.18  # thrust constant
+GRAVITY_ACCEL = -9.81 / 1000    # gravity constant
+BOOST_ACCEL = 18 / 1000  # thrust constant
 PLATFORM_WIDTH = 0.25    # landing platform width
 PLATFORM_HEIGHT = 0.06  # landing platform height
 ROTATION_ACCEL = 20     # rotation constant
@@ -48,13 +48,15 @@ class Dynamics(nn.Module):
 
         # Thrust
         N = len(state)
-        state_tensor = t.zeros((N, 5))
-        state_tensor[:, 1] = -t.sin(state[:, 4])
-        state_tensor[:, 3] = t.cos(state[:, 4])
-        delta_state = BOOST_ACCEL * FRAME_TIME * t.mul(state_tensor, action[:, 0].reshape(-1, 1))
+        state_tensor = t.zeros((1,N))
+        state_tensor[0] = -0.5 * FRAME_TIME * t.sin(state[4])
+        state_tensor[1] = -t.sin(state[4])
+        state_tensor[2] = 0.5 * FRAME_TIME * t.cos(state[4])
+        state_tensor[3] = t.cos(state[4])
+        delta_state = BOOST_ACCEL * FRAME_TIME * t.mul(state_tensor, action[0])
 
         # Theta
-        delta_state_theta = FRAME_TIME * t.mul(t.tensor([0., 0., 0., 0., -1.]), action[:, 1].reshape(-1, 1))
+        delta_state_theta = FRAME_TIME * t.mul(t.tensor([0., 0., 0., 0., 1.]), action[1])
 
         state = state + delta_state + delta_state_gravity + delta_state_theta
 
@@ -64,6 +66,7 @@ class Dynamics(nn.Module):
                              [0., 0., 1., FRAME_TIME, 0.],
                              [0., 0., 0., 1., 0.],
                              [0., 0., 0., 0., 1.]])
+
         state = t.matmul(step_mat, state.T)
 
         return state

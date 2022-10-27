@@ -67,7 +67,7 @@ class Dynamics(nn.Module):
                              [0., 0., 0., 1., 0.],
                              [0., 0., 0., 0., 1.]])
 
-        state = t.matmul(step_mat, state.T)
+        state = t.matmul(step_mat, state)
 
         return state
 
@@ -119,7 +119,9 @@ class Simulation(nn.Module):
 
     @staticmethod
     def initialize_state():
-        state = [1., 0.]    # TODO: need batch of initial states
+        state = [[5, 3, 10, -2, 3.141*(1/4)],
+                 [3, 2, 8, 4, 3.141*(3/4)],
+                 [8, 4, 14, 1, 3.141*(2/3)]]    # TODO: need batch of initial states
         return t.tensor(state, requires_grad=False).float()
 
     def error(self, state):

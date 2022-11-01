@@ -18,9 +18,7 @@ logger = logging.getLogger(__name__)
 FRAME_TIME = 1    # time interval
 GRAVITY_ACCEL = 9.81/1000    # gravity constant
 BOOST_ACCEL = 18/1000  # thrust constant
-PLATFORM_WIDTH = 0.25    # landing platform width
-PLATFORM_HEIGHT = 0.06  # landing platform height
-ROTATION_ACCEL = 0.2     # rotation constant
+ROTATION_VEL = 10/1000     # rotation constant
 
 
 # Define System Dynamics
@@ -44,31 +42,21 @@ class Dynamics(nn.Module):
         """
 
         # Apply gravity
-        delta_state_gravity = t.tensor([0., 0., 0., -GRAVITY_ACCEL * FRAME_TIME, 0.])
-        # delta_state_gravity = t.tensor([0., GRAVITY_ACCEL * FRAME_TIME])
+        delta_state_gravity = t.tensor([0., 0., -0.5 * FRAME_TIME**2 * GRAVITY_ACCEL, -GRAVITY_ACCEL * FRAME_TIME, 0.])
+        #delta_state_gravity = t.tensor([0., 0., 0., -GRAVITY_ACCEL * FRAME_TIME, 0.])
 
         # Thrust
-        """
-        state_tensor = t.zeros((1, 5))
-        state_tensor[0, 0] = -0.5 * FRAME_TIME * t.sin(state[4])
-        state_tensor[0, 1] = -t.sin(state[4])
-        state_tensor[0, 2] = 0.5 * FRAME_TIME * t.cos(state[4])
-        state_tensor[0, 3] = t.cos(state[4])
-        delta_state = BOOST_ACCEL * FRAME_TIME * t.mul(state_tensor, action[0])        
-        """
         state_tensor = t.tensor([-0.5 * FRAME_TIME * t.sin(state[4]),
                                  -t.sin(state[4]),
                                  0.5 * FRAME_TIME * t.cos(state[4]),
                                  t.cos(state[4]),
                                  0])
         delta_state = BOOST_ACCEL * FRAME_TIME * t.mul(state_tensor, action[0])
-        # delta_state = BOOST_ACCEL * FRAME_TIME * t.tensor([0., -1.]) * action
-
 
         # Theta
-        delta_state_theta = FRAME_TIME * ROTATION_ACCEL * t.mul(t.tensor([0., 0., 0., 0., 1.]), action[1])
+        delta_state_theta = FRAME_TIME * ROTATION_VEL * t.mul(t.tensor([0., 0., 0., 0., 1.]), action[1])
 
-        state = state + delta_state + delta_state_gravity + delta_state_theta
+        #state = state + delta_state + delta_state_gravity + delta_state_theta
 
 
         step_mat = t.tensor([[1., FRAME_TIME, 0., 0., 0.],
@@ -78,13 +66,11 @@ class Dynamics(nn.Module):
                              [0., 0., 0., 0., 1.]])        
 
         # Update state
-        #step_mat = t.tensor([[1., FRAME_TIME],
-        #                     [0., 1.]])
+        state = t.matmul(step_mat, state)
+        state = state + delta_state + delta_state_gravity + delta_state_theta
 
-        state = t.matmul(step_mat, state.T)
-        #state = state.T
 
-        return state.T
+        return state
 
 # Create controller
 
@@ -133,13 +119,13 @@ class Simulation(nn.Module):
 
     @staticmethod
     def initialize_state():
-        state = [10./1000, 18./1000, 200./1000, -12./1000, 1./1000]
-                 #[3, 2, 8, 4, 3.141*(3/4)],
-                 #[8, 4, 14, 1, 3.141*(2/3)]]    # TODO: need batch of initial states
+        state = np.array([10., 0., 500., -4., math.pi*0.5])
+        #state = np.array([0.015, 0., 1., -0.02, math.pi*(90/180)])
+        state = np.multiply(state, 1/1000)
         return t.tensor(state, requires_grad=False).float()
 
     def error(self, state):
-        return state[0]**2 + state[1]**2
+        return state[0]**2 + state[1]**2 + state[2]**2 + state[3]**2 + state[4]**2
 
 # Set up optimizer
 
@@ -147,7 +133,7 @@ class Optimize:
     def __init__(self, simulation):
         self.simulation = simulation
         self.parameters = simulation.controller.parameters()
-        self.optimizer = optim.LBFGS(self.parameters, lr=0.01)
+        self.optimizer = optim.LBFGS(self.parameters, lr=0.05)
 
     def step(self):
         def closure():
@@ -166,8 +152,8 @@ class Optimize:
 
     def visualize(self):
         data = np.array([self.simulation.state_trajectory[i].detach().numpy() for i in range(self.simulation.T)])
-        x = data[:, 0]
-        y = data[:, 2]
+        x = data[:, 2]
+        y = data[:, 3]
         plt.plot(x, y)
         plt.show()
 
@@ -176,7 +162,7 @@ class Optimize:
 
 T = 20    # number of time steps
 dim_input = 5    # state space dimensions
-dim_hidden = 6  # latent dimensions
+dim_hidden = 20  # latent dimensions
 dim_output = 2  # action space dimensions
 d = Dynamics()  # define dynamics
 c = Controller(dim_input, dim_hidden, dim_output)   # define controller

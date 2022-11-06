@@ -125,7 +125,7 @@ class Simulation(nn.Module):
         return t.tensor(state, requires_grad=False).float()
 
     def error(self, state):
-        return state[0]**2 + state[1]**2 + state[2]**2 + state[3]**2 + state[4]**2
+        return (state[0]**2 + state[1]**2 + state[2]**2 + state[3]**2 + state[4]**2)*1000
 
 # Set up optimizer
 
@@ -152,9 +152,27 @@ class Optimize:
 
     def visualize(self):
         data = np.array([self.simulation.state_trajectory[i].detach().numpy() for i in range(self.simulation.T)])
-        x = data[:, 2]
-        y = data[:, 3]
-        plt.plot(x, y)
+        x = data[:, 0]
+        x_dot = data[:, 1]
+        y = data[:, 2]
+        y_dot = data[:, 3]
+        theta = data[:, 4]
+
+        fig, axs = plt.subplots(3, 1)
+        axs[0].plot(y, x)
+        axs[0].set_xlabel('Height from Ground')
+        axs[0].set_ylabel('Horizontal Distance')
+
+        axs[1].plot(y, x_dot, label='Horizontal Speed')
+        axs[1].plot(y, y_dot, label='Vertical Speed')
+        axs[1].set_xlabel('Height from Ground')
+        axs[1].set_ylabel('Speed')
+        axs[1].legend(loc='best')
+
+        axs[2].plot(y, theta)
+        axs[2].set_xlabel('Height from Ground')
+        axs[2].set_ylabel('Rocket Orientation')
+
         plt.show()
 
  # Run the code
